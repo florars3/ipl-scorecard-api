@@ -1,0 +1,12 @@
+# Core API Dependencies
+Flask==2.2.5
+Flask-Cors==3.1.1
+Scrapy==2.11.0
+requests==2.31.0
+
+# Production server
+gunicorn==20.1.0
+Werkzeug==2.2.3
+
+# Optional (for local .env support)
+python-dotenv==1.0.1
