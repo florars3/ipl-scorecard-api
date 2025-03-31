@@ -11,7 +11,8 @@ A Flask-based API that scrapes **live IPL match scorecards** from Cricbuzz and p
 - Get IPL scorecard by **Cricbuzz Match ID**.
 - Get IPL scorecard by **Match Number**.
 - List **all IPL matches** with match IDs.
-- (Optional) Refresh and populate match IDs dynamically for **all seasons (2008–2025)**.
+- **Refresh and populate match IDs dynamically** for all seasons (2008–2025) using `/get_all_matches_refresh`.
+- **Update IPL series IDs dynamically** for new seasons using `/update_series`
 
 ---
 
