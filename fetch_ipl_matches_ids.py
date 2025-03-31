@@ -2,39 +2,40 @@ import json
 import requests
 from scrapy.http import HtmlResponse
 import time
+import os
+import logging
+import argparse
+from flask import Flask, jsonify, request
 
-# IPL Series IDs from Cricbuzz (you can add more years if available)
-IPL_SERIES = {
-    "IPL2008": 2058,
-    "IPL2009": 2059,
-    "IPL2010": 2060,
-    "IPL2011": 2037,
-    "IPL2012": 2115,
-    "IPL2013": 2170,
-    "IPL2014": 2261,
-    "IPL2015": 2330,
-    "IPL2016": 2430,
-    "IPL2017": 2568,
-    "IPL2018": 2676,
-    "IPL2019": 2810,
-    "IPL2020": 3130,
-    "IPL2021": 3472,
-    "IPL2022": 4061,
-    "IPL2023": 5945,
-    "IPL2024": 7607,
-    "IPL2025": 9237
-}
+# ---------- Logging ----------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+# ---------- Load IPL Series ----------
+def load_ipl_series(file_path="ipl_series.json"):
+    if not os.path.exists(file_path):
+        logging.error(f"IPL series file '{file_path}' not found.")
+        return {}
+    try:
+        with open(file_path, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        logging.error(f"Error reading {file_path}: {e}")
+        return {}
 
 
+# ---------- Fetch Matches ----------
 def fetch_matches_for_season(season, series_id):
-    print(f"Fetching {season} data...")
+    logging.info(f"Fetching {season} data...")
     match_list = []
     url = f"https://www.cricbuzz.com/cricket-series/{series_id}/indian-premier-league-{season[-4:]}/matches"
 
     try:
         cricbuzz_resp = requests.get(url)
         if cricbuzz_resp.status_code != 200:
-            print(f"Failed to fetch {season}. Skipping...")
+            logging.warning(f"Failed to fetch {season}. Skipping...")
             return []
 
         response = HtmlResponse(url=url, body=cricbuzz_resp.text, encoding='utf-8')
@@ -63,27 +64,59 @@ def fetch_matches_for_season(season, series_id):
                     match_list.append(match_data)
                     match_no += 1
             except Exception as e:
-                print(f"Error parsing a match card: {e}")
+                logging.error(f"Error parsing a match card: {e}")
                 continue
-        print(f"✅ {season}: {len(match_list)} matches fetched")
+        logging.info(f"✅ {season}: {len(match_list)} matches fetched")
     except Exception as e:
-        print(f"Error fetching {season}: {e}")
+        logging.error(f"Error fetching {season}: {e}")
 
     return match_list
 
 
-def fetch_all_ipl_matches():
+def fetch_all_ipl_matches(season=None):
+    ipl_series = load_ipl_series()
+    if not ipl_series:
+        logging.error("No IPL series data found. Exiting...")
+        return {}
+
     all_matches = {}
-    for season, series_id in IPL_SERIES.items():
-        matches = fetch_matches_for_season(season, series_id)
+
+    if season:
+        if season not in ipl_series:
+            logging.error(f"Season '{season}' not found in IPL series data.")
+            return {}
+        matches = fetch_matches_for_season(season, ipl_series[season])
         all_matches[season] = matches
-        time.sleep(1)  # Be polite to Cricbuzz server
+    else:
+        for season_key, series_id in ipl_series.items():
+            matches = fetch_matches_for_season(season_key, series_id)
+            all_matches[season_key] = matches
+            time.sleep(1)  # Be polite
 
     with open("match_ids.json", "w") as f:
         json.dump(all_matches, f, indent=2)
 
-    print(f"\n🎯 All IPL seasons saved in match_ids.json")
+    logging.info("🎯 IPL matches saved in match_ids.json")
+    return all_matches
+
+
+# ---------- CLI ----------
+def cli():
+    parser = argparse.ArgumentParser(description="Fetch IPL match data")
+    parser.add_argument("--season", type=str, help="Fetch specific IPL season (e.g., IPL2020)")
+    args = parser.parse_args()
+    fetch_all_ipl_matches(args.season)
+
+
+# ---------- Flask API ----------
+app = Flask(__name__)
+
+@app.route("/fetch-matches", methods=["GET"])
+def fetch_matches_route():
+    season = request.args.get("season")
+    data = fetch_all_ipl_matches(season)
+    return jsonify({"status": "success", "data": data})
 
 
 if __name__ == "__main__":
-    fetch_all_ipl_matches()
+    cli()

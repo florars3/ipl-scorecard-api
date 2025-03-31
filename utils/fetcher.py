@@ -2,6 +2,10 @@ import json
 import requests
 from scrapy.http import HtmlResponse
 import time
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 
 def load_ipl_series():
     with open("ipl_series.json", "r") as f:
@@ -9,14 +13,14 @@ def load_ipl_series():
 
 
 def fetch_matches_for_season(season, series_id):
-    print(f"🔄 Fetching {season} data...")
+    logging.info(f"🔄 Fetching {season} data...")
     match_list = []
     url = f"https://www.cricbuzz.com/cricket-series/{series_id}/indian-premier-league-{season[-4:]}/matches"
 
     try:
         cricbuzz_resp = requests.get(url)
         if cricbuzz_resp.status_code != 200:
-            print(f"❌ Failed to fetch {season}. Skipping...")
+            logging.warning(f"❌ Failed to fetch {season}. Skipping...")
             return []
 
         response = HtmlResponse(url=url, body=cricbuzz_resp.text, encoding='utf-8')
@@ -45,11 +49,11 @@ def fetch_matches_for_season(season, series_id):
                     match_list.append(match_data)
                     match_no += 1
             except Exception as e:
-                print(f"⚠️ Error parsing match card: {e}")
+                logging.warning(f"⚠️ Error parsing match card: {e}")
                 continue
-        print(f"✅ {season}: {len(match_list)} matches fetched")
+        logging.info(f"✅ {season}: {len(match_list)} matches fetched")
     except Exception as e:
-        print(f"❗ Error fetching {season}: {e}")
+        logging.error(f"❗ Error fetching {season}: {e}")
 
     return match_list
 
@@ -58,23 +62,26 @@ def fetch_all_ipl_matches(season='all', save_to_file=True):
     refreshed_data = {}
     ipl_series = load_ipl_series()
 
-    if season == 'all':
+    # Normalize season key
+    if season.lower() == 'all':
         for season_key, series_id in ipl_series.items():
             matches = fetch_matches_for_season(season_key, series_id)
             refreshed_data[season_key] = matches
-            time.sleep(1)  # Respectful scraping
+            time.sleep(1)
     else:
-        year_key = f"IPL{season}"
-        if year_key in ipl_series:
-            series_id = ipl_series[year_key]
-            matches = fetch_matches_for_season(year_key, series_id)
-            refreshed_data[year_key] = matches
+        # Accept both IPL2025 or 2025
+        season_key = season.upper() if season.upper().startswith("IPL") else f"IPL{season}"
+        if season_key in ipl_series:
+            series_id = ipl_series[season_key]
+            matches = fetch_matches_for_season(season_key, series_id)
+            refreshed_data[season_key] = matches
         else:
-            raise ValueError(f"Invalid season: {season}")
+            valid_keys = list(ipl_series.keys())
+            raise ValueError(f"Invalid season: {season}. Valid options: {valid_keys}")
 
     if save_to_file:
         with open("match_ids.json", "w") as f:
             json.dump(refreshed_data, f, indent=2)
-        print("📄 match_ids.json updated successfully.")
+        logging.info("📄 match_ids.json updated successfully.")
 
     return refreshed_data
