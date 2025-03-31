@@ -20,13 +20,17 @@ A Flask-based API that scrapes **live IPL match scorecards** from Cricbuzz and p
 
 ```
 .
-├── app.py                 # Flask API source code
-├── fetch_ipl_match_ids.py # Script to fetch match IDs for all IPL seasons
-├── match_ids.json         # Stores IPL match IDs and details
-├── requirements.txt       # Python dependencies
-├── Dockerfile             # Docker setup (optional)
-├── .gitignore             # Git ignored files
-└── README.md              # Project documentation
+.
+├── app.py                  # Flask API source code
+├── match_ids.json          # Stores IPL match IDs and details
+├── ipl_series.json         # Stores IPL series IDs mapping (season -> series_id)
+├── requirements.txt        # Python dependencies
+├── Dockerfile              # Docker setup (optional)
+├── .gitignore              # Git ignored files
+├── README.md               # Project documentation
+└── utils/                  # Utility scripts
+    ├── fetcher.py          # Fetch match IDs logic
+    └── update_series.py    # Script to scrape and update IPL series IDs
 ```
 
 ---
@@ -148,12 +152,29 @@ Returns the stored IPL match numbers and IDs from `match_ids.json`.
 
 ---
 
-### (Optional) Refresh All Match IDs
+### Refresh Match IDs (Optional)
 
-Use this script to fetch all IPL match IDs from **2008 to 2025**:
-```bash
-python fetch_ipl_match_ids.py
 ```
+GET /get_all_matches_refresh
+```
+Refresh and populate match IDs dynamically for ***all seasons (2008–2025)***.
+
+---
+
+### Refresh a specific season (Optional):
+
+```bash
+GET /get_all_matches_refresh?season=2025
+```
+
+---
+
+### Update IPL Series IDs (Optional)
+
+```bash
+GET /update_series
+```
+Fetches and updates the latest ***IPL series IDs*** dynamically in `ipl_series.json`.
 
 ---
 
