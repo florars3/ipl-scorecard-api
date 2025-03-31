@@ -42,13 +42,28 @@ def home():
     Returns:
         str: Instructions for using the API.
     """
-    return ("Welcome to the IPL Live Scorecard API!\n\n"
-            "Usage:\n"
-            "1. /scorecard/live - Get live IPL match scorecard.\n"
-            "2. /scorecard?ipl_match_no=match_no - Get IPL scorecard by match number.\n"
-            "3. /scorecard/match_id - Get scorecard by Cricbuzz match ID.\n"
-            "4. /get_all_matches - List all IPL 2025 matches.\n"
-            "5. /get_all_matches_refresh - Refresh match IDs.\n")
+    return """
+        <html>
+        <head>
+            <title>IPL Live Scorecard API</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5; }
+                pre { background: #fff; padding: 10px; border-radius: 8px; }
+            </style>
+        </head>
+        <body>
+            <h2>🏏 IPL Live Scorecard API</h2>
+            <p>&emsp;Usage:</p>
+            <pre>
+    1. /scorecard/live                  - Get live IPL match scorecard
+    2. /scorecard?ipl_match_no=match_no - Get IPL scorecard by match number
+    3. /scorecard/match_id              - Get scorecard by Cricbuzz match ID
+    4. /get_all_matches                 - List all IPL matches
+    5. /get_all_matches_refresh         - Refresh match IDs (Optional)
+            </pre>
+        </body>
+        </html>
+        """
 
 
 @app.route('/scorecard/live', methods=["GET"])
