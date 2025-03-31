@@ -27,9 +27,11 @@ Folder Structure:
 import json
 import flask
 import requests
-from flask import request
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from scrapy.http import HtmlResponse
+from utils.fetcher import fetch_all_ipl_matches
+from utils.update_series import update_ipl_series
 
 app = flask.Flask(__name__)
 CORS(app)
@@ -43,27 +45,29 @@ def home():
         str: Instructions for using the API.
     """
     return """
-        <html>
-        <head>
-            <title>IPL Live Scorecard API</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5; }
-                pre { background: #fff; padding: 10px; border-radius: 8px; }
-            </style>
-        </head>
-        <body>
-            <h2>🏏 IPL Live Scorecard API</h2>
-            <p>&emsp;Usage:</p>
-            <pre>
-    1. /scorecard/live                  - Get live IPL match scorecard
-    2. /scorecard?ipl_match_no=match_no - Get IPL scorecard by match number
-    3. /scorecard/match_id              - Get scorecard by Cricbuzz match ID
-    4. /get_all_matches                 - List all IPL matches
-    5. /get_all_matches_refresh         - Refresh match IDs (Optional)
-            </pre>
-        </body>
-        </html>
-        """
+    <html>
+    <head>
+        <title>IPL Live Scorecard API</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5; }
+            pre { background: #fff; padding: 10px; border-radius: 8px; }
+        </style>
+    </head>
+    <body>
+        <h2>🏏 IPL Live Scorecard API</h2>
+        <p>&emsp;Usage:</p>
+        <pre>
+1. /scorecard/live                  - Get live IPL match scorecard
+2. /scorecard?ipl_match_no=match_no - Get IPL scorecard by match number
+3. /scorecard/match_id              - Get scorecard by Cricbuzz match ID
+4. /get_all_matches                 - List all IPL matches
+5. /get_all_matches_refresh         - Refresh match IDs for all seasons or a specific year
+6. /update_series                   - Refresh and update latest IPL series IDs dynamically
+        </pre>
+    </body>
+    </html>
+    """
+
 
 
 @app.route('/scorecard/live', methods=["GET"])
@@ -136,6 +140,33 @@ def get_all_matches():
     with open("./match_ids.json", "r") as f:
         match_ids = json.load(f)
     return match_ids
+
+
+@app.route('/get_all_matches_refresh', methods=["GET"])
+def refresh_match_ids():
+    season = request.args.get('season', default='all')
+    try:
+        refreshed_data = fetch_all_ipl_matches(season=season, save_to_file=True)
+        return jsonify({
+            "message": "Match IDs refreshed successfully",
+            "seasons": list(refreshed_data.keys())
+        })
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
+
+
+@app.route('/update_series', methods=["GET"])
+def update_series_route():
+    try:
+        updated = update_ipl_series()
+        return jsonify({
+            "message": "IPL Series IDs updated successfully",
+            "updated_seasons": list(updated.keys())
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to update series: {str(e)}"}), 500
 
 
 def fetch_live_ipl_match_id():
