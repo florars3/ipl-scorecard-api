@@ -25,16 +25,37 @@ Folder Structure:
 """
 
 import json
+import subprocess
+
 import flask
 import requests
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, redirect, send_from_directory
 from flask_cors import CORS
 from scrapy.http import HtmlResponse
 from utils.fetcher import fetch_all_ipl_matches
 from utils.update_series import update_ipl_series
+from utils.fantasy_points import calculate_total_points
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
 
 app = flask.Flask(__name__)
 CORS(app)
+
+def safe_int(val):
+    try:
+        return int(val)
+    except:
+        return 0
+
+def safe_float(val):
+    try:
+        return float(val)
+    except:
+        return 0.0
+
 
 @app.route("/", methods=["GET"])
 def home():
@@ -63,11 +84,101 @@ def home():
 4. /get_all_matches                 - List all IPL matches
 5. /get_all_matches_refresh         - Refresh match IDs for all seasons or a specific year
 6. /update_series                   - Refresh and update latest IPL series IDs dynamically
+7. /fantasy/points?match_id=<id>    - Calculate Fantasy Points for a match
+8. /tests/report                    - Run all tests and show an interactive HTML Test Report in your browser
+
         </pre>
     </body>
     </html>
     """
 
+@app.route('/reports/<path:filename>')
+def serve_report(filename):
+    return send_from_directory('reports', filename)
+
+@app.route('/tests/report')
+def show_test_report():
+    subprocess.run(
+        ["pytest", "--html=reports/report.html", "--self-contained-html"]
+    )
+    return redirect("/reports/report.html")
+
+@app.route('/tests/run')
+def run_tests():
+    """Run pytest and show result in browser."""
+    try:
+        result = subprocess.run(
+            ["pytest", "-v", "--tb=short"],
+            capture_output=True,
+            text=True
+        )
+        return f"<pre>{result.stdout}</pre>"
+    except Exception as e:
+        return f"Error running tests: {str(e)}"
+
+@app.route('/fantasy/points')
+def fantasy_points():
+    match_id = request.args.get('match_id')
+
+    if not match_id:
+        return {"message": "Provide match_id"}
+
+    # Fetch scoreboard using your existing function
+    scorecard = get_entire_scorecard(match_id)
+
+    fantasy_summary = {}
+
+    for inning in ['Innings1', 'Innings2']:
+        batting = scorecard[inning][0]['Batsman']
+        bowling = scorecard[inning][1]['Bowlers']
+
+        # Batting points
+        for batter in batting:
+            name = batter.get('name')
+            stats = {
+                'runs': safe_int(batter.get('runs')),
+                'fours': safe_int(batter.get('fours')),
+                'sixes': safe_int(batter.get('sixes')),
+                'balls_faced': safe_int(batter.get('balls')),
+                'wickets': 0,
+                'lbw_bowled': 0,
+                'overs_bowled': 0,
+                'runs_conceded': 0,
+                'maidens': 0,
+                'catches': 0,
+                'stumpings': 0,
+                'run_outs_direct': 0,
+                'run_outs_others': 0
+            }
+            fantasy_summary[name] = calculate_total_points(stats)
+
+        # Bowling points
+        for bowler in bowling:
+            name = bowler.get('name')
+            stats = {
+                'runs': 0,
+                'fours': 0,
+                'sixes': 0,
+                'balls_faced': 0,
+                'wickets': safe_int(bowler.get('wickets')),
+                'lbw_bowled': 0,  # Optional parsing
+                'overs_bowled': safe_float(bowler.get('overs')),
+                'runs_conceded': safe_int(bowler.get('runs')),
+                'maidens': safe_int(bowler.get('maidens')),
+                'catches': 0,
+                'stumpings': 0,
+                'run_outs_direct': 0,
+                'run_outs_others': 0
+            }
+            if name in fantasy_summary:
+                # Player is all-rounder (bat + bowl)
+                fantasy_summary[name] += calculate_total_points(stats)
+            else:
+                fantasy_summary[name] = calculate_total_points(stats)
+
+    logger.info(f"[Fantasy] Points for match {match_id} → {fantasy_summary}")
+
+    return jsonify(fantasy_summary)
 
 
 @app.route('/scorecard/live', methods=["GET"])

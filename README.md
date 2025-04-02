@@ -19,18 +19,19 @@ A Flask-based API that scrapes **live IPL match scorecards** from Cricbuzz and p
 ## 📂 Project Structure
 
 ```
-.
-.
-├── app.py                  # Flask API source code
-├── match_ids.json          # Stores IPL match IDs and details
-├── ipl_series.json         # Stores IPL series IDs mapping (season -> series_id)
-├── requirements.txt        # Python dependencies
-├── Dockerfile              # Docker setup (optional)
-├── .gitignore              # Git ignored files
-├── README.md               # Project documentation
-└── utils/                  # Utility scripts
-    ├── fetcher.py          # Fetch match IDs logic
-    └── update_series.py    # Script to scrape and update IPL series IDs
+ipl-scorecard-api/
+├── app.py                      # Flask app
+├── utils/                      # Helper modules
+│   ├── fantasy_points.py       # Fantasy points logic
+│   ├── fetcher.py              # IPL match list fetcher
+│   └── update_series.py        # IPL series updater
+├── tests/                      # pytest test cases
+│   └── test_fantasy_points.py  # Unit tests
+├── reports/                    # HTML test reports (auto-generated)
+├── match_ids.json              # Stored match IDs
+├── requirements.txt            # Python dependencies
+└── README.md                   # Project README
+
 ```
 
 ---
@@ -177,6 +178,26 @@ GET /update_series
 Fetches and updates the latest ***IPL series IDs*** dynamically in `ipl_series.json`.
 
 ---
+
+### Fantasy Points
+
+```bash
+/fantasy/points?match_id=<match_id>
+
+```
+Calculate Fantasy Points for a match.
+
+---
+
+### Test Reports
+
+```bash
+/tests/report
+```
+Run all tests and show an interactive HTML Test Report in your browser.
+
+---
+
 
 ## 🚧 To-Do (Optional)
 
